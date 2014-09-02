@@ -7,8 +7,8 @@ local event = require "event"
 local term = require "term"
 
 local function trilaterate( A, B, C )
-	local a2b = B.vPosition - A.vPosition
-	local a2c = C.vPosition - A.vPosition
+	local a2b = B.position - A.position
+	local a2c = C.position - A.position
 		
 	if math.abs( a2b:normalize():dot( a2c:normalize() ) ) > 0.999 then
 		return nil
@@ -21,14 +21,14 @@ local function trilaterate( A, B, C )
 	local j = ey:dot( a2c )
 	local ez = ex:cross( ey )
 
-	local r1 = A.nDistance
-	local r2 = B.nDistance
-	local r3 = C.nDistance
+	local r1 = A.distance
+	local r2 = B.distance
+	local r3 = C.distance
 		
 	local x = (r1*r1 - r2*r2 + d*d) / (2*d)
 	local y = (r1*r1 - r3*r3 - x*x + (x-i)*(x-i) + j*j) / (2*j)
 		
-	local result = A.vPosition + (ex * x) + (ey * y)
+	local result = A.position + (ex * x) + (ey * y)
 
 	local zSquared = r1*r1 - x*x - y*y
 	if zSquared > 0 then
@@ -84,13 +84,13 @@ function gps.locate( timeout, modem, debug )
 	end
 	
 	-- Send a ping to listening GPS hosts
-	modem.broadcast( PORT_GPS, "GPS", chan, "PING" )
+	modem.broadcast( PORT_GPS, "GPS", port, "PING" )
 		
 	-- Wait for the responses
 	local fixes = {}
 	local pos1, pos2 = nil, nil
 	while true do
-		local e = {event.pull(_nTimeout)}
+		local e = {event.pull(timeout)}
 		if e[1] == "modem_message" then
 			-- We received a message from a modem
 			local address, from, port, distance, header = table.unpack(e,2,6)
@@ -98,15 +98,15 @@ function gps.locate( timeout, modem, debug )
 			if address == modem.address and port == port and header == "GPS" then
 				-- Received the correct message from the correct modem: use it to determine position
 				if #message == 3 then
-					local fix = { position = vector.new( tMessage[1], tMessage[2], tMessage[3] ), distance = distance }
+					local fix = { position = vector.new( message[1], message[2], message[3] ), distance = distance }
 					if debug then
-						print( fix.distance.." meters from "..tostring( fix.position ) )
+						print( fix.distance.." meters from "..fix.position.x..", "..fix.position.y..", "..fix.position.z )
 					end
 					if fix.distance == 0 then
 					    pos1, pos2 = fix.position, nil
 					else
                         table.insert( fixes, fix )
-                        if #tFixes >= 3 then
+                        if #fixes >= 3 then
                             if not pos1 then
                                 pos1, pos2 = trilaterate( fixes[1], fixes[2], fixes[#fixes] )
                             else
@@ -126,7 +126,7 @@ function gps.locate( timeout, modem, debug )
 	
 	-- Close the port, if we opened one
 	if openedPort then
-		modem.close( chan )
+		modem.close( port )
 	end
 	
 	-- Return the response
@@ -196,8 +196,8 @@ function gps.host(x,y,z,modem)
 				-- Print the number of requests handled
 				nServed = nServed + 1
 				if nServed > 1 then
-					local x,y = term.getCursorPosition()
-					term.setCursorPosition(1,y-1)
+					local x,y = term.getCursor()
+					term.setCursor(1,y-1)
 				end
 				print( nServed.." GPS requests served" )
 			end

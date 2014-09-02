@@ -52,11 +52,11 @@ local _vector = {
 
 local vmetatable = {
 	__index = _vector,
-	__add = vector.add,
-	__sub = vector.sub,
-	__mul = vector.mul,
+	__add = _vector.add,
+	__sub = _vector.sub,
+	__mul = _vector.mul,
 	__unm = function( v ) return v:mul(-1) end,
-	__tostring = vector.tostring,
+	__tostring = _vector.tostring,
 }
 
 function vector.new( x, y, z )
